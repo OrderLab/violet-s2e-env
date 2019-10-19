@@ -8,6 +8,10 @@ binary](https://github.com/CyberGrandChallenge/samples), while another project
 might be the analysis of the ``file`` program from
 [Coreutils](https://www.gnu.org/software/coreutils/coreutils.html).
 
+Compared to the official [s2e-env](https://github.com/S2E/s2e-env), we changed
+the [config.yaml](s2e_env/dat/config.yaml) and [init.py](s2e_env/commands/init.py)
+to use our own [s2e-manifest](https://github.com/OrderLab/s2e-manifest) repo.
+
 # Prerequisites
 
 We assume that you are working on an Ubuntu 14.04 or 16.04 64-bit OS.
