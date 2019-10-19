@@ -98,10 +98,10 @@ dependencies:
 
 # S2E Git repos
 repos:
-    url: git@github.com:OrderLab
+    url: https://github.com/S2E
 
     # Names of git repositories
-    s2e: s2e-manifest.git
+    manifest: git@github.com:OrderLab/s2e-manifest.git
     images:
         linux: s2e-linux-kernel
         build: guest-images

@@ -159,13 +159,12 @@ def _get_s2e_sources(env_path):
     orig_dir = os.getcwd()
     os.chdir(s2e_source_path)
 
-    git_url = CONSTANTS['repos']['url']
-    git_s2e_repo = CONSTANTS['repos']['s2e']
+    git_s2e_repo = CONSTANTS['repos']['manifest']
 
     try:
         # Now use repo to initialize all the repositories
-        logger.info('Fetching %s from %s', git_s2e_repo, git_url)
-        repo.init(u='%s/%s' % (git_url, git_s2e_repo), _out=sys.stdout,
+        logger.info('Fetching manifest from %s', git_s2e_repo)
+        repo.init(u='%s' % (git_s2e_repo), _out=sys.stdout,
                   _err=sys.stderr, _fg=True)
         repo.sync(_out=sys.stdout, _err=sys.stderr, _fg=True)
     except ErrorReturnCode as e:
