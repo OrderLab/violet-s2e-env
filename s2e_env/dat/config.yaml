@@ -98,14 +98,19 @@ dependencies:
 
 # S2E Git repos
 repos:
-    url: https://github.com/S2E
-
     # Names of git repositories
-    manifest: git@github.com:OrderLab/s2e-manifest.git
+    manifest: 
+      url: git@github.com:OrderLab/s2e-manifest.git
     images:
-        linux: s2e-linux-kernel
-        build: guest-images
-    testsuite: testsuite
+        linux:
+            url: https://github.com/S2E/s2e-linux-kernel
+            path: s2e-linux-kernel
+        build: 
+            url: git@github.com:OrderLab/s2e-guest-images.git
+            path: guest-images
+    testsuite:
+        url: https://github.com/S2E/testsuite
+        path: testsuite
 
 required_versions:
     # Ubuntu OS major version

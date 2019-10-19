@@ -42,10 +42,11 @@ def git_clone(git_repo_url, git_repo_dir):
         raise CommandError(e)
 
 
-def git_clone_to_source(env_path, git_repo):
-    git_url = CONSTANTS['repos']['url']
-
-    git_repo_dir = os.path.join(env_path, 'source', git_repo)
-    git_repo_url = '%s/%s' % (git_url, git_repo)
+def git_clone_to_source(env_path, git_repo_url, git_repo_path):
+    if git_repo_path is None:
+        git_repo_path = git_repo_url.split('/')[-1]
+        if git_repo_path.endswith('.git'):
+            git_repo_path = git_repo_path[:-len('.git')]
+    git_repo_dir = os.path.join(env_path, 'source', git_repo_path)
     git_clone(git_repo_url, git_repo_dir)
-    logger.success('Fetched %s', git_repo)
+    logger.success('Fetched %s to %s', git_repo_url, git_repo_dir)

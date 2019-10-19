@@ -97,7 +97,7 @@ class Command(EnvCommand):
         git_repos = CONSTANTS['repos']['images'].values()
 
         for git_repo in git_repos:
-            self._update_repo(git_repo)
+            self._update_repo(git_repo['path'])
 
     def _update_testsuite(self):
         """
@@ -105,4 +105,4 @@ class Command(EnvCommand):
         """
 
         git_repo = CONSTANTS['repos']['testsuite']
-        self._update_repo(git_repo)
+        self._update_repo(git_repo['path'])

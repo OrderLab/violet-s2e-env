@@ -115,7 +115,7 @@ class TestsuiteGenerator(EnvCommand):
         self._cmd_options = {}
 
     def _get_image_templates(self):
-        img_build_dir = self.source_path(CONSTANTS['repos']['images']['build'])
+        img_build_dir = self.source_path(CONSTANTS['repos']['images']['build']['path'])
         return get_image_templates(img_build_dir)
 
     def _generate_run_tests(self, ts_dir, test, script_template, options):

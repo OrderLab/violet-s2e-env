@@ -265,7 +265,7 @@ class Command(EnvCommand):
         if not os.path.exists(self.image_path()):
             os.makedirs(self.image_path())
 
-        img_build_dir = self.source_path(CONSTANTS['repos']['images']['build'])
+        img_build_dir = self.source_path(CONSTANTS['repos']['images']['build']['path'])
 
         if options['clean']:
             self._invoke_make(img_build_dir, ['clean'], num_cores)
@@ -329,7 +329,7 @@ class Command(EnvCommand):
         env = os.environ.copy()
         env['S2E_INSTALL_ROOT'] = self.install_path()
         env['S2E_LINUX_KERNELS_ROOT'] = \
-            self.source_path(CONSTANTS['repos']['images']['linux'])
+            self.source_path(CONSTANTS['repos']['images']['linux']['path'])
         env['OUTDIR'] = self.image_path()
 
         if iso_dir:
@@ -364,7 +364,7 @@ class Command(EnvCommand):
             raise CommandError(e)
 
     def _clone_kernel(self):
-        kernels_root = self.source_path(CONSTANTS['repos']['images']['linux'])
+        kernels_root = self.source_path(CONSTANTS['repos']['images']['linux']['path'])
         if os.path.exists(kernels_root):
             logger.info('Kernel repository already exists in %s', kernels_root)
             return
@@ -372,10 +372,10 @@ class Command(EnvCommand):
         logger.info('Cloning kernels repository to %s', kernels_root)
 
         kernels_repo = CONSTANTS['repos']['images']['linux']
-        repos.git_clone_to_source(self.env_path(), kernels_repo)
+        repos.git_clone_to_source(self.env_path(), kernels_repo['url'], kernels_repo['path'])
 
     def _print_image_list(self):
-        img_build_dir = self.source_path(CONSTANTS['repos']['images']['build'])
+        img_build_dir = self.source_path(CONSTANTS['repos']['images']['build']['path'])
         templates = get_image_templates(img_build_dir)
 
         if not templates:

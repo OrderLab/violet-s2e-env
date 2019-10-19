@@ -142,7 +142,7 @@ class AbstractProject(EnvCommand):
             the image's JSON descriptor.
         """
         # Load the image JSON description. If it is not given, guess the image
-        img_build_dir = self.source_path(CONSTANTS['repos']['images']['build'])
+        img_build_dir = self.source_path(CONSTANTS['repos']['images']['build']['path'])
         img_templates = get_image_templates(img_build_dir)
 
         if not image:
