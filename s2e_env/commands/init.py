@@ -163,12 +163,19 @@ def _get_s2e_sources(env_path):
     os.chdir(s2e_source_path)
 
     git_s2e_repo = CONSTANTS['repos']['manifest']['url']
+    git_s2e_branch = CONSTANTS['repos']['manifest']['branch']
 
     try:
         # Now use repo to initialize all the repositories
-        logger.info('Fetching manifest from %s', git_s2e_repo)
-        repo.init(u='%s' % (git_s2e_repo), _out=sys.stdout,
-                  _err=sys.stderr, _fg=True)
+        if git_s2e_branch:
+            logger.info('Fetching manifest (branch %s) from %s', git_s2e_branch,
+                    git_s2e_repo)
+            repo.init(b='%s' % (git_s2e_branch), u='%s' % (git_s2e_repo),
+                    _out=sys.stdout, _err=sys.stderr, _fg=True)
+        else:
+            logger.info('Fetching manifest from %s', git_s2e_repo)
+            repo.init(u='%s' % (git_s2e_repo), _out=sys.stdout,
+                      _err=sys.stderr, _fg=True)
         repo.sync(_out=sys.stdout, _err=sys.stderr, _fg=True)
     except ErrorReturnCode as e:
         # Clean up - remove the half-created S2E environment
