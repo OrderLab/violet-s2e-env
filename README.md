@@ -29,7 +29,7 @@ disassemblers include:
 # Install
 
 ```console
-git clone git@github.com:OrderLab/s2e-env.git
+git clone -b violet git@github.com:OrderLab/s2e-env.git
 cd s2e-env
 pip install .
 
