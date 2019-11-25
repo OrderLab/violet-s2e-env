@@ -51,7 +51,8 @@ def _get_img_sources(env_path):
     git_repos = CONSTANTS['repos']['images'].values()
 
     for git_repo in git_repos:
-        repos.git_clone_to_source(env_path, git_repo['url'], git_repo['path'])
+        repos.git_clone_to_source(env_path, git_repo['url'], git_repo['path'],
+                git_repo['branch'])
 
 
 def _get_testsuite_sources(env_path):
@@ -59,7 +60,8 @@ def _get_testsuite_sources(env_path):
     Download the testsuite repository
     """
     git_repo = CONSTANTS['repos']['testsuite']
-    repos.git_clone_to_source(env_path, git_repo['url'], git_repo['path'])
+    repos.git_clone_to_source(env_path, git_repo['url'], git_repo['path'],
+            git_repo['branch'])
 
 
 def _link_existing_install(env_path, existing_install):
@@ -86,7 +88,8 @@ def _link_existing_install(env_path, existing_install):
     # We still need to clone guest-images repo, because it contains info about
     # the location of images
     guest_images_repo = CONSTANTS['repos']['images']['build']
-    repos.git_clone_to_source(env_path, guest_images_repo['url'], guest_images_repo['path'])
+    repos.git_clone_to_source(env_path, guest_images_repo['url'], guest_images_repo['path'],
+            guest_images_repo['branch'])
 
 
 def _install_dependencies():

@@ -33,20 +33,26 @@ from s2e_env.command import  CommandError
 logger = logging.getLogger(__name__)
 
 
-def git_clone(git_repo_url, git_repo_dir):
+def git_clone(git_repo_url, git_repo_dir, git_repo_branch=None):
     try:
-        logger.info('Fetching from %s to %s', git_repo_url, git_repo_dir)
-        git.clone(git_repo_url, git_repo_dir, _out=sys.stdout,
-                  _err=sys.stderr, _fg=True)
+        if git_repo_branch:
+            logger.info('Fetching from %s (branch %s) to %s', git_repo_url, 
+                    git_repo_branch, git_repo_dir)
+            git.clone(git_repo_url, "-b", git_repo_branch, git_repo_dir, _out=sys.stdout,
+                      _err=sys.stderr, _fg=True)
+        else:
+            logger.info('Fetching from %s to %s', git_repo_url, git_repo_dir)
+            git.clone(git_repo_url, git_repo_dir, _out=sys.stdout,
+                      _err=sys.stderr, _fg=True)
     except ErrorReturnCode as e:
         raise CommandError(e)
 
 
-def git_clone_to_source(env_path, git_repo_url, git_repo_path):
+def git_clone_to_source(env_path, git_repo_url, git_repo_path, git_repo_branch=None):
     if git_repo_path is None:
         git_repo_path = git_repo_url.split('/')[-1]
         if git_repo_path.endswith('.git'):
             git_repo_path = git_repo_path[:-len('.git')]
     git_repo_dir = os.path.join(env_path, 'source', git_repo_path)
-    git_clone(git_repo_url, git_repo_dir)
+    git_clone(git_repo_url, git_repo_dir, git_repo_branch)
     logger.success('Fetched %s to %s', git_repo_url, git_repo_dir)
