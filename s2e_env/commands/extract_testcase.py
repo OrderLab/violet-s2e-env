@@ -120,7 +120,7 @@ def byte_array_to_int(value):
         struct_format = 'i'   # convert to int type
     else:
         padding = 8 - l
-        struct_format = 'l'   # convert to long type
+        struct_format = 'q'   # convert to long long type
     for i in range(padding):
         v.append(0x00)
     # print '0x' + ''.join(format(x, '02x') for x in v[::-1])
@@ -134,10 +134,10 @@ class TestCaseKeyValue:
         self.key = key
         self.num_bytes = len(value)
         self.value_bytes = value.encode('base64').strip()
-        # self.value_int = int(value[::-1].encode('hex'), 16)
-        self.value_int = byte_array_to_int(value) 
         self.value_hex = ','.join('0x' + x.encode('hex') for x in value)
         self.value_printable = ''.join(c if c in string.printable else '.' for c in value)
+        # self.value_int = int(value[::-1].encode('hex'), 16)
+        self.value_int = byte_array_to_int(value)
 
     def __gt__(self, key_value2):
         return self.key > key_value2.key
