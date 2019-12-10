@@ -212,4 +212,6 @@ class Command(ProjectCommand):
             with open(os.path.join(outdir, test_case_file_name), 'w') as json_file:
                 json.dump(test_case.make_json_dict(), json_file, indent=4)
             testid += 1
+        with open(os.path.join(outdir, 'testcases.json'), 'w') as json_file:
+            json.dump(test_cases.make_json_dict(), json_file, indent=2)
         logger.success('Written %d test cases to %s', len(test_cases), outdir)
