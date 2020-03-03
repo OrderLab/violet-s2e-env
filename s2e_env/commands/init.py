@@ -152,8 +152,14 @@ def _get_s2e_sources(env_path, manifest_branch):
 
     try:
         # Now use repo to initialize all the repositories
-        logger.info('Fetching %s from %s', git_s2e_repo, git_url)
-        repo.init(u='%s/%s' % (git_url, git_s2e_repo), b=manifest_branch,
+        if git_s2e_branch:
+            logger.info('Fetching manifest (branch %s) from %s', git_s2e_branch,
+                        git_s2e_repo)
+            repo.init(b='%s' % (git_s2e_branch), u='%s' % (git_s2e_repo),
+                      _out=sys.stdout, _err=sys.stderr, _fg=True)
+        else:
+            logger.info('Fetching %s from %s', git_s2e_repo, git_url)
+            repo.init(u='%s/%s' % (git_url, git_s2e_repo), b=manifest_branch,
                   _out=sys.stdout, _err=sys.stderr, _fg=True)
         repo.sync(_out=sys.stdout, _err=sys.stderr, _fg=True)
     except ErrorReturnCode as e:
