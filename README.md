@@ -14,9 +14,12 @@ to use our own [s2e-manifest](https://github.com/OrderLab/s2e-manifest) repo.
 
 # Prerequisites
 
-We assume that you are working on an Ubuntu 14.04 or 16.04 64-bit OS.
-[Repo](https://code.google.com/p/git-repo/) only works with Python 2.7, so you
-should use Python 2.7 too. You will also need `gcc` and `python-dev` installed.
+We assume that you are working on an Ubuntu 18.04 LTS 64-bit OS.
+You will need the following packages:
+
+```console
+$ sudo apt-get install git gcc python3 python3-dev python3-venv
+```
 
 Some commands (such as basic block coverage) require a disassembler. Supported
 disassemblers include:
@@ -28,9 +31,13 @@ disassemblers include:
 
 # Install
 
+We recommend installing ``s2e-env`` into a virtual environment.
+
 ```console
 git clone -b violet git@github.com:OrderLab/s2e-env.git
 cd s2e-env
+python3 -m venv venv
+. venv/bin/activate
 pip install .
 
 # Note: you can install it locally with:
@@ -40,18 +47,16 @@ pip install --user .
 pip install . --process-dependency-links
 ```
 
-If you wish to install `s2e-env` to a Python
-[virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/),
-please create and activate this virtualenv before installing `s2e-env` with
-pip.
-
 # Tests
 
-Tests can be run via
+Run tests with the following command:
 
 ```console
-python setup.py test
+$ ./test.sh
 ```
+
+This will create a fresh virtual environment ``venv-test``, install all requirements,
+run pylint, the tests, and record coverage.
 
 # Configuring
 

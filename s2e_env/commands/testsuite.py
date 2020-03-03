@@ -67,7 +67,7 @@ def _get_run_test_scripts(project_root):
 
         run_tests_path = os.path.join(project_root, path, 'run-tests')
         if not os.path.exists(run_tests_path):
-            logger.warn('%s does not exist, skipping test project %s', run_tests_path, fn)
+            logger.warning('%s does not exist, skipping test project %s', run_tests_path, fn)
 
         tests.append(run_tests_path)
 
@@ -94,7 +94,7 @@ def _read_config(test_root, s2e_images_root):
     return yaml.safe_load(rendered)['test']
 
 
-def _call_post_project_gen_script(test_dir, test_config, project_dir):
+def _call_post_project_gen_script(test_dir, test_config, options):
     script = test_config.get('build-options', {}).get('post-project-generation-script', None)
     if not script:
         return
@@ -104,7 +104,10 @@ def _call_post_project_gen_script(test_dir, test_config, project_dir):
         raise CommandError('%s does not exist' % script)
 
     env = os.environ.copy()
-    env['PROJECT_DIR'] = project_dir
+    env['PROJECT_DIR'] = options['project_path']
+    env['TARGET'] = options['target'].path
+    env['TESTSUITE_ROOT'] = options['testsuite_root']
+
     cmd = sh.Command(script).bake(_out=sys.stdout, _err=sys.stderr, _fg=True, _env=env)
     cmd()
 
@@ -140,7 +143,7 @@ class TestsuiteGenerator(EnvCommand):
         if build_options.get('windows-build-server', False):
             if not self._cmd_options.get('with_windows_build'):
                 # Skip tests that require a windows build server if instructed
-                logger.warn('Skipping test %s, because it requires a Windows build machine', test_name)
+                logger.warning('Skipping test %s, because it requires a Windows build machine', test_name)
                 return False
 
             host = self.config.get('windows_build_server', {}).get('host', '')
@@ -156,7 +159,7 @@ class TestsuiteGenerator(EnvCommand):
 
     # pylint: disable=too-many-locals
     def _handle_test(self, test_root, test, test_config, img_templates):
-        ts_dir = self.source_path('testsuite')
+        ts_dir = self.source_path('s2e', 'testsuite')
 
         if os.path.exists(os.path.join(test_root, 'Makefile')):
             _build_test(self._config, self.source_path('s2e'), test_root)
@@ -172,19 +175,22 @@ class TestsuiteGenerator(EnvCommand):
 
             for image_name in images:
                 if image_name in blacklisted_images:
-                    logger.warn('%s is blacklisted, skipping tests for that image', image_name)
+                    logger.warning('%s is blacklisted, skipping tests for that image', image_name)
                     continue
 
                 if target_images and image_name not in target_images:
                     logger.debug('%s is not in target-images, skipping', image_name)
                     continue
 
+                name = 'testsuite_%s_%s_%s' % (test, os.path.basename(target_name), image_name)
                 options = {
                     'image': image_name,
-                    'name': 'testsuite_%s_%s_%s' % (test, os.path.basename(target_name), image_name),
+                    'name': name,
                     'target': target,
                     'target_args': test_config.get('target_arguments', []),
-                    'force': True
+                    'force': True,
+                    'project_path': self.projects_path(name),
+                    'testsuite_root': ts_dir
                 }
                 options.update(test_config.get('options', []))
 
@@ -193,11 +199,11 @@ class TestsuiteGenerator(EnvCommand):
                 scripts = test_config.get('scripts', {})
                 run_tests_template = scripts.get('run_tests', 'run-tests.tpl')
                 self._generate_run_tests(ts_dir, test, run_tests_template, options)
-                _call_post_project_gen_script(test_root, test_config, self.projects_path(options['name']))
+                _call_post_project_gen_script(test_root, test_config, options)
 
 
     def _get_tests(self):
-        ts_dir = self.source_path('testsuite')
+        ts_dir = self.source_path('s2e', 'testsuite')
         if not os.path.isdir(ts_dir):
             raise CommandError('%s does not exist. Please check that you updated the S2E source' % ts_dir)
 
@@ -213,7 +219,7 @@ class TestsuiteGenerator(EnvCommand):
         self._cmd_options = options
 
         img_templates = self._get_image_templates()
-        ts_dir = self.source_path('testsuite')
+        ts_dir = self.source_path('s2e', 'testsuite')
         tests = self._get_tests()
 
         for test in tests:
@@ -231,14 +237,14 @@ class TestsuiteGenerator(EnvCommand):
 
 class TestsuiteLister(EnvCommand):
     def handle(self, *args, **options):
-        ts_dir = self.source_path('testsuite')
+        ts_dir = self.source_path('s2e', 'testsuite')
         if not os.path.isdir(ts_dir):
             logger.error('%s does not exist. Please check that you updated the S2E source', ts_dir)
             return
 
         tests = _get_tests(ts_dir)
         if not tests:
-            logger.warn('There are no tests available')
+            logger.warning('There are no tests available')
             return
 
         logger.info('Available tests')
@@ -289,9 +295,9 @@ class TestsuiteRunner(EnvCommand):
                 status = None
                 try:
                     subprocess.check_call([script], env=env, stdout=so, stderr=se)
-                    status = "SUCCESS"
+                    status = 'SUCCESS'
                 except Exception:
-                    status = "FAILURE"
+                    status = 'FAILURE'
                 finally:
                     end_time = datetime.datetime.now()
                     diff_time = end_time - start_time
@@ -350,7 +356,7 @@ class TestsuiteRunner(EnvCommand):
                 item.wait(timeout=9999999)
 
         except KeyboardInterrupt:
-            logger.warn('Terminating testsuite (CTRL+C)')
+            logger.warning('Terminating testsuite (CTRL+C)')
             pool.terminate()
         finally:
             pool.join()

@@ -109,12 +109,14 @@ class AbstractProject(EnvCommand):
         raise NotImplementedError('Subclasses of AbstractProject must provide '
                                   'a _create method')
 
+    # pylint: disable=unused-argument
+    # pylint: disable=no-self-use
     def _get_instructions(self, config):
         """
         Generate instructions for the user on how to use their newly-created
         project. These instructions should be returned as a string.
         """
-        pass
+        return ''
 
     def _is_valid_image(self, target, os_desc):
         """
@@ -123,7 +125,6 @@ class AbstractProject(EnvCommand):
         This validation may vary depending on the target and image type.
         Returns ``True`` if the binary is valid and ``False`` otherwise.
         """
-        pass
 
     #
     # Image helper methods
@@ -176,7 +177,7 @@ class AbstractProject(EnvCommand):
         """
         images = []
 
-        for k, v in image_templates.iteritems():
+        for k, v in image_templates.items():
             if self._is_valid_image(target, v['os']):
                 images.append(k)
 
@@ -262,17 +263,16 @@ class AbstractProject(EnvCommand):
 
         logger.info('Creating a symlink to %s', guest_tools_path)
         os.symlink(guest_tools_path,
-                   os.path.join(project_dir, 'guest-tools'))
+                   os.path.join(project_dir, CONSTANTS['guest_tools'][img_arch]))
 
         # Also link 32-bit guest tools for 64-bit guests.
-        # This is a workaround for forced concretizations until proper symbolic MMX
-        # registers support is implemented.
+        # This is required on Linux to have 32-bit s2e.so when loading 32-bit binaries
         if img_arch == 'x86_64':
             guest_tools_path_32 = \
                 self.install_path('bin', CONSTANTS['guest_tools']['i386'])
 
             os.symlink(guest_tools_path_32,
-                       os.path.join(project_dir, 'guest-tools32'))
+                       os.path.join(project_dir, CONSTANTS['guest_tools']['i386']))
 
 
     def _select_guestfs(self, img_desc):
