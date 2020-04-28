@@ -61,7 +61,7 @@ setup(
         'python-magic',
         'pyyaml',
         'requests',
-        'sh',
+        'sh==1.12.14',
         'termcolor',
         'pytrie',
         'pwntools==4.0.1',
