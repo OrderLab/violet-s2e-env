@@ -21,17 +21,17 @@ SOFTWARE.
 """
 
 import bisect
-import copy
 import logging
 
 from functools import total_ordering
 
+import immutables
 
 logger = logging.getLogger('analyzer')
 
 
 @total_ordering
-class SectionDescriptor(object):
+class SectionDescriptor:
     __slots__ = (
         'name', 'runtime_load_base', 'native_load_base', 'size',
         'readable', 'writable', 'executable'
@@ -48,7 +48,7 @@ class SectionDescriptor(object):
             self.executable = pb_section.executable
 
     def contains(self, pc):
-        return (self.runtime_load_base <= pc) and (pc < self.runtime_load_base + self.size)
+        return self.runtime_load_base <= pc < (self.runtime_load_base + self.size)
 
     def __hash__(self):
         return hash((self.runtime_load_base, self.size))
@@ -64,7 +64,7 @@ class SectionDescriptor(object):
 
 
 @total_ordering
-class Module(object):
+class Module:
     __slots__ = (
         'name', 'path', 'pid', 'sections'
     )
@@ -116,41 +116,46 @@ def _index(sections, x):
     return None
 
 
-class ModuleMap(object):
+class ModuleMap:
     def __init__(self):
-        self._pid_to_sections = {}
-        self._section_to_module = {}
+        # Use immutable structures for copy-on-write. It is much faster than
+        # doing deepcopy of normal maps, especially when there are many states.
+        self._pid_to_sections = immutables.Map()
+        self._section_to_module = immutables.Map()
         self._kernel_start = 0xffffffffffffffff
 
     def add(self, mod):
-        if mod.pid not in self._pid_to_sections:
-            self._pid_to_sections[mod.pid] = []
-
-        pid_sections = self._pid_to_sections[mod.pid]
+        pid_sections = self._pid_to_sections.get(mod.pid, []).copy()
 
         for section in mod.sections:
             if not section.size:
                 raise Exception('Section %s of module %s has zero size' % (section, mod))
 
             idx = _index(pid_sections, section)
-            if idx != None:
-                logger.warn('Section already loaded: %s - module %s',
-                            section, self._section_to_module[(mod.pid, pid_sections[idx])])
+            if idx is not None:
+                logger.warning('Section already loaded: %s - module %s',
+                               section, self._section_to_module[(mod.pid, pid_sections[idx])])
                 continue
 
             bisect.insort(pid_sections, section)
-            self._section_to_module[(mod.pid, section)] = mod
+            self._section_to_module = self._section_to_module.set((mod.pid, section), mod)
+
+        self._pid_to_sections = self._pid_to_sections.set(mod.pid, pid_sections)
 
     def remove(self, mod):
-        pid_sections = self._pid_to_sections[mod.pid]
+        pid_sections = self._pid_to_sections[mod.pid].copy()
         for section in mod.sections:
             idx = _index(pid_sections, section)
-            if idx != None:
+            if idx is not None:
                 del pid_sections[idx]
-                del self._section_to_module[(mod.pid, section)]
+                self._section_to_module = self._section_to_module.delete((mod.pid, section))
+                self._pid_to_sections = self._pid_to_sections.set(mod.pid, pid_sections)
 
     def remove_pid(self, pid):
-        del self._pid_to_sections[pid]
+        self._pid_to_sections = self._pid_to_sections.delete(pid)
+        for k, _ in self._section_to_module.items():
+            if k[0] == pid:
+                self._section_to_module = self._section_to_module.delete(k)
 
     def get(self, pid, pc):
         pid = self._translate_pid(pid, pc)
@@ -171,21 +176,17 @@ class ModuleMap(object):
 
     def dump(self):
         logger.info('Dumping module map')
-        for pid, sections in self._pid_to_sections.items():
+        for pid, sections in list(self._pid_to_sections.items()):
             for section in sections:
                 s = module = None
                 logger.info('pid=%d section=(%s) module=(%s) section=(%s)', pid, section, module, s)
         logger.info('Dumping module map done')
 
     def clone(self):
-        """
-        This assumes that individual modules are immutable, so it's enough
-        to just copy the array, without copying the modules themselves.
-        """
         # pylint: disable=protected-access
         ret = ModuleMap()
-        ret._pid_to_sections = copy.deepcopy(self._pid_to_sections)
-        ret._section_to_module = copy.deepcopy(self._section_to_module)
+        ret._pid_to_sections = self._pid_to_sections
+        ret._section_to_module = self._section_to_module
         ret._kernel_start = self._kernel_start
         return ret
 

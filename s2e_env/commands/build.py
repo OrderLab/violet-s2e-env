@@ -62,13 +62,13 @@ class Command(EnvCommand):
 
     def handle(self, *args, **options):
         # Exit if the makefile doesn't exist
-        makefile = self.env_path('source', 's2e', 'Makefile')
+        makefile = self.env_path('source', 'Makefile')
         if not os.path.isfile(makefile):
             raise CommandError('No makefile found in %s' %
                                os.path.dirname(makefile))
 
         # If the build directory doesn't exist, create it
-        build_dir = self.env_path('build', 's2e')
+        build_dir = self.env_path('build')
         if not os.path.isdir(build_dir):
             os.mkdir(build_dir)
 
@@ -88,10 +88,10 @@ class Command(EnvCommand):
             # Run make
             if options['debug']:
                 logger.info('Building S2E (debug) in %s', build_dir)
-                self._make('all-debug', _out=sys.stdout, _err=sys.stderr, _fg=True)
+                self._make('all-debug', _out=sys.stdout, _err=sys.stderr)
             else:
                 logger.info('Building S2E (release) in %s', build_dir)
-                self._make('install', _out=sys.stdout, _err=sys.stderr, _fg=True)
+                self._make('install', _out=sys.stdout, _err=sys.stderr)
         except ErrorReturnCode as e:
             raise CommandError(e)
 
@@ -122,13 +122,13 @@ class Command(EnvCommand):
         for component in components:
             # Check if the specified component is valid "as is"
             if component in stamps:
-                stamps_to_delete.append(self.env_path('build', 's2e', 'stamps', component))
+                stamps_to_delete.append(self.env_path('build', 'stamps', component))
                 continue
 
             # Check if the user has specified a valid component prefix
             # TODO: This will delete both the debug and release stamps (if they exist)
             if component in stamp_prefixes:
-                stamps_to_delete.extend(glob.glob(self.env_path('build', 's2e', 'stamps', '%s-*' % component)))
+                stamps_to_delete.extend(glob.glob(self.env_path('build', 'stamps', '%s-*' % component)))
                 continue
 
             # If we've made it this far, the component is not valid

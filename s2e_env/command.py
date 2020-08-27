@@ -39,6 +39,7 @@ import sys
 
 import yaml
 
+
 class CommandError(Exception):
     """
     Exception class indicating a problem while executing a command.
@@ -49,7 +50,6 @@ class CommandError(Exception):
     sensible description of the error) is the preferred way to indicate that
     something has gone wrong in the execution of the command.
     """
-    pass
 
 
 class CommandParser(ArgumentParser):
@@ -69,7 +69,7 @@ class CommandParser(ArgumentParser):
             raise CommandError(message)
 
 
-class BaseCommand(object):
+class BaseCommand(metaclass=ABCMeta):
     """
     The base class that all commands ultimately derive from.
 
@@ -102,9 +102,6 @@ class BaseCommand(object):
     ``help`` class attribute should be specified.
     """
 
-    # Abstract class
-    __metaclass__ = ABCMeta
-
     # Metadata about this command
     help = ''
 
@@ -129,7 +126,6 @@ class BaseCommand(object):
         """
         Entry point for subclassed commands to add custom arguments.
         """
-        pass
 
     def print_help(self, prog_name, subcommand):
         """
@@ -155,7 +151,7 @@ class BaseCommand(object):
             if not os.getuid():
                 raise CommandError('Please do not run s2e as root')
 
-            output = self.execute(*args, **cmd_options)
+            self.execute(*args, **cmd_options)
         except Exception as e:
             # Only handle CommandErrors here
             if not isinstance(e, CommandError):
@@ -165,14 +161,11 @@ class BaseCommand(object):
             logger.error(e)
             sys.exit(1)
 
-        return output
-
     def handle_common_args(self, **options):
         """
         Handle any common command options here and remove them from the options
         dict given to the command.
         """
-        pass
 
     def execute(self, *args, **options):
         """
@@ -309,6 +302,14 @@ class ProjectCommand(EnvCommand):
         """
         super(ProjectCommand, self).handle_common_args(**options)
 
+        project = options['project']
+        if os.path.isabs(project):
+            projects_dir = self.env_path('projects')
+            if projects_dir not in os.path.commonpath([projects_dir, project]):
+                raise CommandError(f'Specified project path is not a subdirectory of {projects_dir}')
+            project = os.path.relpath(project, projects_dir)
+        options['project'] = project
+
         # Construct the project directory
         self._project_dir = self.env_path('projects', options['project'])
         self._project_name = options.pop('project', ())
@@ -368,6 +369,7 @@ class ProjectCommand(EnvCommand):
         # Put import here to avoid circular dependency
         # https://github.com/PyCQA/pylint/issues/850
         # pylint: disable=cyclic-import
+        # pylint: disable=import-outside-toplevel
         from s2e_env.utils import images
 
         if not self._image:

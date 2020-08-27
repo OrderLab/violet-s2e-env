@@ -20,14 +20,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-
 import datetime
 import logging
 import os
 import shutil
 import stat
 import sys
+import urllib
 
+import distro
 import requests
 import sh
 from sh import ErrorReturnCode
@@ -40,28 +41,7 @@ from s2e_env.command import BaseCommand, CommandError
 from s2e_env.utils import repos
 from s2e_env.utils.templates import render_template
 
-
 logger = logging.getLogger('init')
-
-
-def _get_img_sources(env_path):
-    """
-    Download the S2E image repositories.
-    """
-    git_repos = CONSTANTS['repos']['images'].values()
-
-    for git_repo in git_repos:
-        repos.git_clone_to_source(env_path, git_repo['url'], git_repo['path'],
-                git_repo['branch'])
-
-
-def _get_testsuite_sources(env_path):
-    """
-    Download the testsuite repository
-    """
-    git_repo = CONSTANTS['repos']['testsuite']
-    repos.git_clone_to_source(env_path, git_repo['url'], git_repo['path'],
-            git_repo['branch'])
 
 
 def _link_existing_install(env_path, existing_install):
@@ -88,11 +68,10 @@ def _link_existing_install(env_path, existing_install):
     # We still need to clone guest-images repo, because it contains info about
     # the location of images
     guest_images_repo = CONSTANTS['repos']['images']['build']
-    repos.git_clone_to_source(env_path, guest_images_repo['url'], guest_images_repo['path'],
-            guest_images_repo['branch'])
+    repos.git_clone_to_source(env_path, guest_images_repo)
 
 
-def _install_dependencies():
+def _install_dependencies(interactive):
     """
     Install S2E's dependencies.
 
@@ -104,8 +83,23 @@ def _install_dependencies():
     if not ubuntu_ver:
         return
 
-    install_packages = CONSTANTS['dependencies']['common'] + \
-                       CONSTANTS['dependencies']['ida']
+    all_install_packages = CONSTANTS['dependencies']['common'] + \
+        CONSTANTS['dependencies'].get(f'ubuntu-{ubuntu_ver}', [])
+
+    install_packages = []
+    deb_package_urls = []
+    for package in all_install_packages:
+        if '.deb' in package:
+            deb_package_urls.append(package)
+        else:
+            install_packages.append(package)
+
+    install_opts = ['--no-install-recommends']
+    env = {}
+    if not interactive:
+        logger.info('Running install in non-interactive mode')
+        env['DEBIAN_FRONTEND'] = 'noninteractive'
+        install_opts = ['-y'] + install_opts
 
     try:
         # Enable 32-bit libraries
@@ -113,11 +107,19 @@ def _install_dependencies():
         dpkg_add_arch('i386')
 
         # Perform apt-get install
-        apt_get = sudo.bake('apt-get', _fg=True)
+        apt_get = sudo.bake('apt-get', _fg=True, _env=env)
         apt_get.update()
-        apt_get.install(install_packages)
+        apt_get.install(install_opts + install_packages)
     except ErrorReturnCode as e:
         raise CommandError(e)
+
+    # Install deb files at the end
+    for url in deb_package_urls:
+        logger.info('Installing deb %s...', url)
+        filename, _ = urllib.request.urlretrieve(url)
+        os.rename(filename, f'{filename}.deb')
+        apt_get = sudo.bake('apt-get', _fg=True, _env=env)
+        apt_get.install(install_opts + [f'{filename}.deb'])
 
 
 def _get_ubuntu_version():
@@ -127,11 +129,9 @@ def _get_ubuntu_version():
     If an unsupported OS/Ubuntu version is found a warning is printed and
     ``None`` is returned.
     """
-    import platform
+    id_name, version, _ = distro.linux_distribution(full_distribution_name=False)
 
-    distname, version, _ = platform.dist()
-
-    if distname.lower() != 'ubuntu':
+    if id_name.lower() != 'ubuntu':
         logger.warning('You are running on a non-Ubuntu system. Skipping S2E '
                        'dependencies - please install them manually')
         return None
@@ -147,36 +147,30 @@ def _get_ubuntu_version():
     return major_version
 
 
-def _get_s2e_sources(env_path):
+def _get_s2e_sources(env_path, manifest_branch):
     """
     Download the S2E manifest repository and initialize all of the S2E
-    repositories with repo.
+    repositories with repo. All required repos are in the manifest,
+    no need to manually clone other repos.
     """
     # Download repo
     repo = _get_repo(env_path)
 
-    s2e_source_path = os.path.join(env_path, 'source', 's2e')
+    source_path = os.path.join(env_path, 'source')
 
     # Create the S2E source directory and cd to it to run repo
-    os.mkdir(s2e_source_path)
     orig_dir = os.getcwd()
-    os.chdir(s2e_source_path)
+    os.chdir(source_path)
 
-    git_s2e_repo = CONSTANTS['repos']['manifest']['url']
-    git_s2e_branch = CONSTANTS['repos']['manifest']['branch']
+    git_url = CONSTANTS['repos']['url']
+    git_s2e_repo = CONSTANTS['repos']['s2e']
 
     try:
         # Now use repo to initialize all the repositories
-        if git_s2e_branch:
-            logger.info('Fetching manifest (branch %s) from %s', git_s2e_branch,
-                    git_s2e_repo)
-            repo.init(b='%s' % (git_s2e_branch), u='%s' % (git_s2e_repo),
-                    _out=sys.stdout, _err=sys.stderr, _fg=True)
-        else:
-            logger.info('Fetching manifest from %s', git_s2e_repo)
-            repo.init(u='%s' % (git_s2e_repo), _out=sys.stdout,
-                      _err=sys.stderr, _fg=True)
-        repo.sync(_out=sys.stdout, _err=sys.stderr, _fg=True)
+        logger.info('Fetching %s from %s', git_s2e_repo, git_url)
+        repo.init(u='%s/%s' % (git_url, git_s2e_repo), b=manifest_branch,
+                  _out=sys.stdout, _err=sys.stderr)
+        repo.sync(_out=sys.stdout, _err=sys.stderr)
     except ErrorReturnCode as e:
         # Clean up - remove the half-created S2E environment
         shutil.rmtree(env_path)
@@ -278,6 +272,12 @@ class Command(BaseCommand):
                             help='Use this flag to force environment creation '
                                  'even if an environment already exists at '
                                  'this location')
+        parser.add_argument('-mb', '--manifest-branch', type=str, required=False, default='master',
+                            help='Specify an alternate branch for the repo manifest')
+        parser.add_argument('-n', '--non-interactive', required=False,
+                            action='store_true', default=False,
+                            help='Install packages without user interaction. '
+                                 'This is useful for unattended installation.')
 
     def handle(self, *args, **options):
         env_path = os.path.realpath(options['dir'])
@@ -295,7 +295,6 @@ class Command(BaseCommand):
                                    'update your existing environment? Try '
                                    '``s2e build`` or ``s2e update`` instead' %
                                    env_path)
-
 
         try:
             # Create environment if it doesn't exist
@@ -324,12 +323,10 @@ class Command(BaseCommand):
             else:
                 # Install S2E's dependencies via apt-get
                 if not options['skip_dependencies']:
-                    _install_dependencies()
+                    _install_dependencies(not options['non_interactive'])
 
                 # Get the source repositories
-                _get_s2e_sources(env_path)
-                _get_img_sources(env_path)
-                _get_testsuite_sources(env_path)
+                _get_s2e_sources(env_path, options['manifest_branch'])
 
                 # Remind the user that they must build S2E
                 msg = '%s. Then run ``s2e build`` to build S2E' % msg

@@ -8,8 +8,11 @@
 
 ENV_DIR="{{ env_dir }}"
 INSTALL_DIR="$ENV_DIR/install"
-BUILD_DIR="$ENV_DIR/build/s2e"
+BUILD_DIR="$ENV_DIR/build"
 BUILD=debug
+
+# Either s2e for symbolic execution support or s2e_sp for single-path mode
+S2E_MODE={% if single_path %}s2e_sp{% else %}s2e{% endif %}
 
 # Comment this out to enable QEMU GUI
 GRAPHICS=-nographic
@@ -51,7 +54,7 @@ if [ "x$DEBUG" != "x" ]; then
     fi
 
     QEMU="$BUILD_DIR/qemu-$BUILD/{{ qemu_arch }}-softmmu/qemu-system-{{ qemu_arch }}"
-    LIBS2E="$BUILD_DIR/libs2e-$BUILD/{{ qemu_arch }}-s2e-softmmu/libs2e.so"
+    LIBS2E="$BUILD_DIR/libs2e-$BUILD/{{ qemu_arch }}-$S2E_MODE-softmmu/libs2e.so"
 
     rm -f gdb.ini
 
@@ -63,10 +66,16 @@ if [ "x$DEBUG" != "x" ]; then
     echo set environment S2E_SHARED_DIR=$S2E_SHARED_DIR >> gdb.ini
     echo set environment LD_PRELOAD=$LIBS2E >> gdb.ini
     echo set environment S2E_UNBUFFERED_STREAM=1 >> gdb.ini
-    # echo set environment QEMU_LOG_LEVEL=int,exec >> gdb.ini
+    # echo set environment LIBCPU_LOG_LEVEL=in_asm,int,exec >> gdb.ini
+    # echo set environment LIBCPU_LOG_FILE=/tmp/log.txt >> gdb.ini
     # echo set environment S2E_QMP_SERVER=127.0.0.1:3322 >> gdb.ini
+    echo set python print-stack full >> gdb.ini
 
     GDB="gdb  --init-command=gdb.ini --args"
+
+    # Useful options:
+    # - Display debug output from the BIOS:
+    #    -chardev stdio,id=seabios -device isa-debugcon,iobase=0x402,chardev=seabios
 
     $GDB $QEMU $QEMU_DRIVE \
         -k en-us $GRAPHICS -monitor null -m $QEMU_MEMORY -enable-kvm \
@@ -74,13 +83,15 @@ if [ "x$DEBUG" != "x" ]; then
         -loadvm $QEMU_SNAPSHOT $*
 
 else
-
     QEMU="$INSTALL_DIR/bin/qemu-system-{{ qemu_arch }}"
-    LIBS2E="$INSTALL_DIR/share/libs2e/libs2e-{{ qemu_arch }}-s2e.so"
+    LIBS2E="$INSTALL_DIR/share/libs2e/libs2e-{{ qemu_arch }}-$S2E_MODE.so"
 
     LD_PRELOAD=$LIBS2E $QEMU $QEMU_DRIVE \
         -k en-us $GRAPHICS -monitor null -m $QEMU_MEMORY -enable-kvm \
         -serial file:serial.txt $QEMU_EXTRA_FLAGS \
-        -loadvm $QEMU_SNAPSHOT $*
+        -loadvm $QEMU_SNAPSHOT $* &
 
+    CHILD_PID=$!
+    trap "kill $CHILD_PID" SIGINT
+    wait $CHILD_PID
 fi

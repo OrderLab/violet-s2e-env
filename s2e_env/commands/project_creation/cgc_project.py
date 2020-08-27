@@ -42,24 +42,29 @@ class CGCProject(BaseProject):
     def _finalize_config(self, config):
         config['project_type'] = 'cgc'
 
-        args = config.get('target_args', [])
+        args = config.get('target').args.raw_args
         if args:
             raise CommandError('Command line arguments for Decree binaries '
                                'not supported')
 
+        single_path = config.get('single_path', False)
+        if single_path:
+            logger.warning('CGC requires multi-path mode, forcing single path option off')
+            config['single_path'] = False
+
         use_seeds = config.get('use_seeds', False)
         if not use_seeds:
-            logger.warn('CGC requires seeds, forcing seed option on')
+            logger.warning('CGC requires seeds, forcing seed option on')
             config['use_seeds'] = True
 
         use_recipes = config.get('use_recipes', False)
         if not use_recipes:
-            logger.warn('CGC requires recipes, forcing recipe option on')
+            logger.warning('CGC requires recipes, forcing recipe option on')
             config['use_recipes'] = True
 
         enable_pov_generation = config.get('enable_pov_generation', False)
         if not enable_pov_generation:
-            logger.warn('CGC required PoV generation, forcing POV generation option on')
+            logger.warning('CGC required PoV generation, forcing POV generation option on')
             config['enable_pov_generation'] = True
 
         # CGC binaries do not have input files

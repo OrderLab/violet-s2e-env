@@ -1,5 +1,5 @@
 """
-Copyright (c) 2017 Cyberhaven
+Copyright (c) 2020 Vitaly Chipounov
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,28 +20,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import logging
+from json import JSONEncoder
 
-from .collector_threads import CollectorThreads
-
-logger = logging.getLogger(__name__)
+from .target import Target
 
 
-class WebServiceInterfacePlugin:
-    coverage = None
-    stats = None
-    crash_count = 0
-    pov1_count = 0
-    pov2_count = 0
-
-    @staticmethod
-    def handle_stats(analysis, data):
-        CollectorThreads.stats.queue_stats(analysis, data)
-
-    @staticmethod
-    def process(data, analysis):
-        data_type = data.get('type', None)
-
-        if data_type == 'stats':
-            WebServiceInterfacePlugin.handle_stats(analysis, data)
-            return
+class ConfigEncoder(JSONEncoder):
+    # pylint: disable=method-hidden
+    def default(self, o):
+        if isinstance(o, Target):
+            return o.toJSON()
+        return super(ConfigEncoder, self).default(o)
