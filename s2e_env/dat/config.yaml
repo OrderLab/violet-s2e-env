@@ -100,17 +100,17 @@ dependencies:
 repos:
     # Names of git repositories
     manifest: 
-      url: git@github.com:OrderLab/s2e-manifest.git
-      branch: violet
+      url: https://github.com/OrderLab/violet-s2e-manifest.git
+      branch: violet-release
     images:
         linux:
-            url: git@github.com:OrderLab/s2e-linux-kernel.git
+            url: https://github.com/OrderLab/violet-s2e-linux-kernel.git
             path: s2e-linux-kernel
             branch: violet
         build: 
-            url: git@github.com:OrderLab/s2e-guest-images.git
+            url: https://github.com/OrderLab/violet-s2e-guest-images.git
             path: guest-images
-            branch: master
+            branch: violet
     testsuite:
         url: https://github.com/S2E/testsuite
         path: testsuite
