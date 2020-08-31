@@ -110,7 +110,7 @@ repos:
         build: 
             url: https://github.com/OrderLab/violet-s2e-guest-images.git
             path: guest-images
-            branch: violet
+            branch: violet-release
     testsuite:
         url: https://github.com/S2E/testsuite
         path: testsuite
